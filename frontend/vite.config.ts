@@ -6,6 +6,14 @@ import topLevelAwait from 'vite-plugin-top-level-await'
 
 // https://vite.dev/config/
 export default defineConfig({
+  optimizeDeps: {
+    include: ['wasm-calculator']
+  },
+  build: {
+    commonjsOptions: {
+      include: [/wasm-calculator/, /node_modules/]
+    }
+  },
   plugins: [wasm(), topLevelAwait(), react(), tailwindcss()],
   assetsInclude: ['**/*.wasm']
 })

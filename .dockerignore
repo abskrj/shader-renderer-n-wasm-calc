@@ -1,0 +1,29 @@
+# Docker ignore file
+
+# General
+.DS_Store
+.git
+.gitignore
+.vscode
+*.log
+*~
+
+# Elixir / Phoenix
+/backend/_build
+/backend/deps
+/backend/priv/static/assets.json
+/backend/cover
+/backend/doc
+
+# Node
+/frontend/node_modules
+/frontend/dist
+/frontend/.DS_Store
+/frontend/npm-debug.log*
+/frontend/yarn-debug.log*
+/frontend/yarn-error.log*
+/frontend/pnpm-debug.log*
+
+# Rust
+/wasm-calculator/target
+/wasm-calculator/pkg 

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Button } from '../ui/button';
-import { evaluate_expression } from 'wasm-calculator';
+import evaluate_expression from 'wasm-calculator';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 const Calculator = () => {

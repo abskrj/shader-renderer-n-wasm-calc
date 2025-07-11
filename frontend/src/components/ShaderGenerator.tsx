@@ -2,28 +2,59 @@ import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { predefinedShaders } from '../constants/shaders';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import ShaderPreview from './ShaderPreview';
 
 const ShaderGenerator = () => {
     const [shaderCode, setShaderCode] = useState('');
     const [prompt, setPrompt] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
-    const [previewColor, setPreviewColor] = useState('#ff0000');
+    const [error, setError] = useState<string | null>(null);
 
     const generateShader = async () => {
-        setIsGenerating(true);
-        // Simulate AI generation with a delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (!prompt.trim()) {
+            setError('Please enter a prompt to generate a shader');
+            return;
+        }
 
-        // For demo purposes, select a random predefined shader
-        const shaderNames = Object.keys(predefinedShaders);
-        const randomShader = shaderNames[Math.floor(Math.random() * shaderNames.length)];
-        setShaderCode(predefinedShaders[randomShader as keyof typeof predefinedShaders]);
-        setIsGenerating(false);
+        setIsGenerating(true);
+        setError(null);
+
+        try {
+            const requestBody: { prompt: string } = {
+                prompt: prompt.trim()
+            };
+
+            const response = await fetch('/api/generate/shader', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error?.message || `HTTP error! status: ${response.status}`);
+            }
+
+            if (data.success && data.data?.code) {
+                setShaderCode(data.data.code);
+            } else {
+                throw new Error('Invalid response format from server');
+            }
+        } catch (err) {
+            console.error('Error generating shader:', err);
+            setError(err instanceof Error ? err.message : 'Failed to generate shader');
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     const loadPredefinedShader = (name: string) => {
         setShaderCode(predefinedShaders[name as keyof typeof predefinedShaders]);
+        setError(null);
     };
 
     useEffect(() => {
@@ -32,25 +63,34 @@ const ShaderGenerator = () => {
     }, []);
 
     return (
-        <Card className="max-w-4xl mx-auto p-4">
+        <Card className="max-w-6xl mx-auto p-4">
             <CardHeader>
                 <CardTitle>AI-Based Shader Generator</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="flex gap-4 my-4">
-                    <Textarea
-                        placeholder="Describe your shader (e.g., 'animated rainbow wave')"
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        className="flex-1"
-                    />
-                    <Button
-                        onClick={generateShader}
-                        disabled={isGenerating}
-                        className="bg-purple-600 hover:bg-purple-700"
-                    >
-                        {isGenerating ? 'Generating...' : 'Generate Shader'}
-                    </Button>
+                <div className="space-y-4 my-4">
+                    <div className="flex gap-4">
+                        <Textarea
+                            placeholder="Describe your shader (e.g., 'animated rainbow wave')"
+                            value={prompt}
+                            onChange={(e) => setPrompt(e.target.value)}
+                            className="flex-1"
+                            rows={2}
+                        />
+                        <Button
+                            onClick={generateShader}
+                            disabled={isGenerating || !prompt.trim()}
+                            className="bg-purple-600 hover:bg-purple-700 self-end"
+                        >
+                            {isGenerating ? 'Generating...' : 'Generate Shader'}
+                        </Button>
+                    </div>
+
+                    {error && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-red-700 text-sm">{error}</p>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex gap-2 my-4 flex-wrap">
@@ -67,9 +107,8 @@ const ShaderGenerator = () => {
                     ))}
                 </div>
 
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div className="xl:col-span-2">
                         <h3 className="text-lg font-semibold mb-2">Shader Code</h3>
                         <Textarea
                             value={shaderCode}
@@ -80,30 +119,18 @@ const ShaderGenerator = () => {
                     </div>
 
                     <div>
-                        <h3 className="text-lg font-semibold mb-2">Preview</h3>
-                        <div className="aspect-square border rounded-lg overflow-hidden bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 relative">
-                            <div
-                                className="absolute inset-0 animate-pulse"
-                                style={{
-                                    background: `linear-gradient(45deg, ${previewColor}, #00ffff, #ff00ff, ${previewColor})`
-                                }}
+                        <h3 className="text-lg font-semibold mb-2">Live Preview</h3>
+                        {shaderCode ? (
+                            <ShaderPreview
+                                shaderCode={shaderCode}
+                                width={350}
+                                height={350}
                             />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="bg-black bg-opacity-50 text-white px-4 py-2 rounded">
-                                    Shader Preview
-                                </div>
+                        ) : (
+                            <div className="w-[350px] h-[350px] border rounded-lg flex items-center justify-center bg-gray-50">
+                                <p className="text-gray-500">No shader code to preview</p>
                             </div>
-                        </div>
-
-                        <div className="mt-4">
-                            <label className="block text-sm font-medium mb-2">Color Theme</label>
-                            <input
-                                type="color"
-                                value={previewColor}
-                                onChange={(e) => setPreviewColor(e.target.value)}
-                                className="w-full h-12 rounded cursor-pointer"
-                            />
-                        </div>
+                        )}
                     </div>
                 </div>
 
@@ -114,6 +141,7 @@ const ShaderGenerator = () => {
                         <li>• Mention if you want animation or static effects</li>
                         <li>• Try combining multiple effects (e.g., "swirling rainbow plasma")</li>
                         <li>• Use the presets as starting points for your own modifications</li>
+                        <li>• The preview updates in real-time as you edit the code</li>
                     </ul>
                 </div>
             </CardContent>
