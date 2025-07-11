@@ -1,74 +1,61 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '../ui/button';
+import { evaluate_expression } from 'wasm-calculator';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 const Calculator = () => {
     const [display, setDisplay] = useState('0');
-    const [previousValue, setPreviousValue] = useState<number | null>(null);
-    const [operation, setOperation] = useState<string | null>(null);
-    const [waitingForOperand, setWaitingForOperand] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const appendToDisplay = (value: string) => {
+        // Prevent adding multiple zeros at the start or multiple dots
+        if (value === '.' && display.includes('.')) return;
+        setDisplay((prev) => (prev === '0' && value !== '.') ? value : prev + value);
+    };
 
     const inputNumber = (num: string) => {
-        if (waitingForOperand) {
-            setDisplay(num);
-            setWaitingForOperand(false);
-        } else {
-            setDisplay(display === '0' ? num : display + num);
-        }
+        appendToDisplay(num);
     };
 
-    const inputOperation = (nextOperation: string) => {
-        const inputValue = parseFloat(display);
-
-        if (previousValue === null) {
-            setPreviousValue(inputValue);
-        } else if (operation) {
-            const currentValue = previousValue || 0;
-            const newValue = performOperation(currentValue, inputValue, operation);
-
-            setDisplay(String(newValue));
-            setPreviousValue(newValue);
-        }
-
-        setWaitingForOperand(true);
-        setOperation(nextOperation);
-    };
-
-    const performOperation = (firstValue: number, secondValue: number, operation: string) => {
-        switch (operation) {
-            case '+':
-                return firstValue + secondValue;
-            case '-':
-                return firstValue - secondValue;
-            case '*':
-                return firstValue * secondValue;
-            case '/':
-                return firstValue / secondValue;
-            default:
-                return secondValue;
-        }
+    const inputOperation = (op: string) => {
+        appendToDisplay(op);
     };
 
     const calculate = () => {
-        const inputValue = parseFloat(display);
-
-        if (previousValue !== null && operation) {
-            const newValue = performOperation(previousValue, inputValue, operation);
-            setDisplay(String(newValue));
-            setPreviousValue(null);
-            setOperation(null);
-            setWaitingForOperand(true);
+        try {
+            // Replace multiple operators with the last one, e.g. 5++2 -> 5+2
+            const sanitizedExpr = display.replace(/([+/*-]){2,}/g, '$1');
+            const result = evaluate_expression(sanitizedExpr);
+            setDisplay(String(result));
+        } catch (e) {
+            setDisplay('Error');
         }
+        inputRef.current?.focus();
     };
 
     const clear = () => {
         setDisplay('0');
-        setPreviousValue(null);
-        setOperation(null);
-        setWaitingForOperand(false);
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Directly update the display with the input's value.
+        // If input is cleared, reset to '0' to avoid empty display.
+        setDisplay(e.target.value || '0');
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' || e.key === '=') {
+            e.preventDefault();
+            calculate();
+        }
+        if (e.key === 'Escape' || e.key === 'Delete') {
+            e.preventDefault();
+            clear();
+        }
     };
 
     const buttons = [
-        ['C', '±', '%', '/'],
+        ['C', '/'],
         ['7', '8', '9', '*'],
         ['4', '5', '6', '-'],
         ['1', '2', '3', '+'],
@@ -76,45 +63,52 @@ const Calculator = () => {
     ];
 
     return (
-        <div className="max-w-sm mx-auto bg-gray-100 rounded-lg p-4 shadow-lg">
-            <div className="mb-4">
-                <div className="bg-gray-800 text-white text-right text-2xl p-4 rounded-lg font-mono">
-                    {display}
+        <Card className="max-w-sm mx-auto">
+            <CardHeader>
+                <CardTitle>Calculator</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="mb-4">
+                    <input
+                        type="text"
+                        className="w-full bg-gray-800 text-white text-right text-2xl p-4 rounded-lg font-mono border-0 focus:outline-none focus:ring-0"
+                        value={display}
+                        onChange={handleChange}
+                        onKeyDown={handleKeyDown}
+                        ref={inputRef}
+                    />
                 </div>
-            </div>
 
-            <div className="grid grid-cols-4 gap-2">
-                {buttons.flat().map((button, index) => (
-                    <Button
-                        key={index}
-                        onClick={() => {
-                            if (button === 'C') {
-                                clear();
-                            } else if (button === '=') {
-                                calculate();
-                            } else if (['+', '-', '*', '/'].includes(button)) {
-                                inputOperation(button);
-                            } else if (button === '±') {
-                                setDisplay(String(parseFloat(display) * -1));
-                            } else if (button === '%') {
-                                setDisplay(String(parseFloat(display) / 100));
-                            } else {
-                                inputNumber(button);
-                            }
-                        }}
-                        variant={['+', '-', '*', '/', '='].includes(button) ? 'default' : 'outline'}
-                        className={`
+                <div className="grid grid-cols-4 gap-2">
+                    {buttons.flat().map((button, index) => (
+                        <Button
+                            key={index}
+                            onClick={() => {
+                                if (button === 'C') {
+                                    clear();
+                                } else if (button === '=') {
+                                    calculate();
+                                } else if (['+', '-', '*', '/'].includes(button)) {
+                                    inputOperation(button);
+                                } else {
+                                    inputNumber(button);
+                                }
+                            }}
+                            variant={['+', '-', '*', '/', '='].includes(button) ? 'default' : 'outline'}
+                            className={`
               h-12 text-lg font-semibold
-              ${button === '0' ? 'col-span-2' : ''}
+              ${['0'].includes(button) ? 'col-span-2' : ''}
+              ${['C'].includes(button) ? 'col-span-3' : ''}
               ${['+', '-', '*', '/', '='].includes(button) ? 'bg-blue-500 hover:bg-blue-600' : ''}
               ${button === 'C' ? 'bg-red-500 hover:bg-red-600 text-white' : ''}
             `}
-                    >
-                        {button}
-                    </Button>
-                ))}
-            </div>
-        </div>
+                        >
+                            {button}
+                        </Button>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
     );
 };
 

@@ -4,7 +4,7 @@ import ShaderGenerator from './components/ShaderGenerator'
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="dark min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center mb-8">
           <Tabs defaultValue="calculator" className="w-full max-w-6xl">
