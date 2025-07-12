@@ -54,3 +54,14 @@ config :phoenix, :stacktrace_depth, 20
 
 # Initialize plugs at runtime for faster development compilation
 config :phoenix, :plug_init_mode, :runtime
+
+# Configure Finch with generous timeouts for development
+config :finch, Invideo.Finch,
+  pools: %{
+    default: [
+      # 60 seconds to get a connection from the pool
+      pool_timeout: 60_000,
+      # 60 seconds to receive a response
+      receive_timeout: 60_000
+    ]
+  }

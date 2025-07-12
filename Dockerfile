@@ -8,17 +8,11 @@ RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
 WORKDIR /app
 
-# Copy Cargo files and create a dummy lib file to cache dependencies
 COPY wasm-calculator/Cargo.toml wasm-calculator/Cargo.lock ./
-RUN mkdir src && echo "fn lib() {}" > src/lib.rs
-RUN cargo build --release --target wasm32-unknown-unknown
-
 # Copy the actual source and build the wasm package
 COPY wasm-calculator/src ./src
 RUN wasm-pack build --target web --out-dir pkg
 # The output will be in /app/pkg
-
-# ---
 
 # Stage 2: Build the Frontend
 FROM node:22-alpine AS frontend-builder
@@ -31,24 +25,21 @@ WORKDIR /app
 # Copy wasm package from previous stage into a structure that mirrors local dev
 COPY --from=wasm-builder /app/pkg ./wasm-calculator/pkg
 
-# Copy frontend package definitions
-COPY frontend/package.json frontend/pnpm-lock.yaml ./frontend/
+# Copy the entire frontend source code first
+COPY frontend/ ./frontend/
 WORKDIR /app/frontend
 
 # Explicitly install the local wasm-calculator package.
 # This command uses the correct Linux path inside the container, overriding
-# the Windows-style path that might be in your source package.json.
-# This makes the Docker build work correctly regardless of your host OS.
+# any Windows-style path from your source package.json. This is the key
+# to making the Docker build work correctly regardless of the host OS.
 RUN pnpm add file:../wasm-calculator/pkg
 
-# Now, install all dependencies. We don't use --frozen-lockfile because
-# the previous step may have modified the lockfile.
+# Now, install all other dependencies.
 RUN pnpm install
 
-# Copy the rest of the frontend code and build
-COPY frontend/ ./
+# Build the frontend with the correct dependencies in place
 RUN pnpm build
-# The output will be in /app/frontend/dist
 
 # ---
 

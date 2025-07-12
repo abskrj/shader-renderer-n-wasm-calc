@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Button } from '../ui/button';
-import evaluate_expression from 'wasm-calculator';
+import * as wasm from 'wasm-calculator';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 const Calculator = () => {
@@ -25,7 +25,7 @@ const Calculator = () => {
         try {
             // Replace multiple operators with the last one, e.g. 5++2 -> 5+2
             const sanitizedExpr = display.replace(/([+/*-]){2,}/g, '$1');
-            const result = evaluate_expression(sanitizedExpr);
+            const result = wasm.evaluate_expression(sanitizedExpr);
             setDisplay(String(result));
         } catch (e) {
             setDisplay('Error');

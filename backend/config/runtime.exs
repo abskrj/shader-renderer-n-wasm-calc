@@ -18,7 +18,11 @@ if config_env() == :prod do
           transport_opts: [
             cacertfile: "/etc/ssl/certs/ca-certificates.crt"
           ]
-        ]
+        ],
+        # 60 seconds to get a connection from the pool
+        pool_timeout: 60_000,
+        # 60 seconds to receive a response
+        receive_timeout: 60_000
       ]
     }
 
